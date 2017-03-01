@@ -9,7 +9,7 @@ Param (
 
 #RDSH
 Import-Module RemoteDesktop 
-Add-RDServer -Server $VMname -Role RDS-RD-SERVER -ConnectionBroker brk.wg.vecomp.cloud
+Add-RDServer -Server $VMname -Role RDS-RD-SERVER -ConnectionBroker cb01.wg.vecomp.cloud
 
 # Firewall
 #netsh advfirewall firewall add rule name="http" dir=in action=allow protocol=TCP localport=80
