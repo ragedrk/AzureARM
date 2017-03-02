@@ -1,0 +1,280 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "DescCliente": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+      "description": "Descrizione del Cliente, esempio: Istituto Sorelle Misericordia"
+      }
+    },
+    "CodCliente": {
+      "type": "int",
+      "minLength": 1,
+      "metadata": {
+      "description": "Codice del Cliente in Esolver, esempio: 1347"
+      }
+    },
+    "NomeAS": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "as-nomecliente",
+      "metadata": {
+        "description": "Nome dell'Availability Group, esempio: as-ism."
+      }
+    },
+    "NomeVM": {
+      "minLength": 1,
+      "type": "string",
+      "defaultValue": "nomecliente-rdsh0",
+      "metadata": {
+        "description": "Nome della VM, esempio ism-rdsh0."
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "adm_vecomp",
+      "metadata": {
+        "description": "Admin username della VM, lasciare invariato."
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password Admin della VM."
+      }
+    },
+
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "savcpssd01",
+      "allowedValues": [
+        "savcpssd01",
+        "savcpmagn00"
+      ],
+      "metadata": {
+        "description": "Storage Account della VM, verificare l'utilizzo prima di scegliere a caso."
+      }
+    },
+    "subnetName": {
+      "type": "string",
+      "defaultValue": "sub-nomecliente",
+      "metadata": {
+        "description": "Subnet di destinazione, l'avete creata con il primo template."
+      }
+    },
+    "virtualNetworkResourceGroup": {
+      "type": "string",
+      "defaultValue": "rg-network",
+      "metadata": {
+        "description": "Resource Group della VNET, lasciare invariato."
+      }
+    },
+    "virtualNetworkName": {
+      "type": "string",
+      "defaultValue": "vnet-rdsfarm",
+      "metadata": {
+        "description": "Nome della VNET, lasciare invariato."
+      }
+    },
+    "DimensioneVM": {
+      "type": "string",
+      "defaultValue": "Standard_F1s",
+      "allowedValues": [
+        "Standard_A1_v2",
+        "Standard_A2_v2",
+        "Standard_A4_v2",
+        "Standard_A8_v2",
+        "Standard_A2m_v2",
+        "Standard_A4m_v2",
+        "Standard_A8m_v2",
+        "Standard_F1s",
+        "Standard_F2s",
+        "Standard_F4s",
+        "Standard_F8s",
+        "Standard_F16s",
+        "Standard_DS1_v2",
+        "Standard_DS2_v2",
+        "Standard_DS3_v2",
+        "Standard_DS4_v2",
+        "Standard_DS5_v2",
+        "Standard_DS11_v2",
+        "Standard_DS12_v2",
+        "Standard_DS13_v2",
+        "Standard_DS14_v2"
+      ],
+      "metadata": {
+        "description": "Tipo di VMs, verificare sul preventivo quale utilizzare."
+      }
+    },
+    "windowsOSVersion": {
+      "type": "string",
+      "defaultValue": "2016-Datacenter",
+      "allowedValues": [
+        "2012-R2-Datacenter",
+        "2016-Nano-Server",
+        "2016-Datacenter-with-Containers",
+        "2016-Datacenter"
+      ],
+      "metadata": {
+        "description": "Versione del Sistema Operativo, lasciare 2016-Datacenter se non vi è stato esplicitato un altro OS."
+      }
+    },
+
+    "DomainUsername": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "wg\\adm_vecomp",
+      "metadata": {
+        "description": "Username dell'utenza abilitata al Join al Dominio, fromato wg\\adm_bellotti."
+      }
+    },
+    "DomainPassword": {
+      "type": "securestring",
+      "minLength": 1,
+      "metadata": {
+        "description": "Password dell'utenza abilitata al Join al Dominio."
+      }
+    },
+    "FQDNDominio": {
+      "minLength": 1,
+      "type": "string",
+      "defaultValue": "wg.vecomp.cloud",
+      "metadata": {
+        "description": "FQDN del dominio, lasciare invariato."
+      }
+    },
+    "OU": {
+      "type": "string",
+      "defaultValue": "OU=Servers,OU=Xxxxxxxxx,OU=CLIENTI,DC=wg,DC=vecomp,DC=cloud",
+      "metadata": {
+        "description": "OU del Cliente, va creata prima, se lasciato blank, va spostato il server poi nella OU corretta."
+      }
+    }
+
+
+  },
+  "variables": {
+    "nicName": "[concat('NIC-',parameters('NomeVM'))]",
+    "virtualNetworkName": "[resourceId(parameters('virtualNetworkResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+    "subnetRef": "[concat(variables('virtualNetworkName'),'/subnets/', parameters('subnetName'))]",
+    "domainJoinOptions": 3,
+    "VMsArray": "[split(parameters('NomeVM'),',')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[parameters('NomeAS')]",
+      "apiVersion": "2015-06-15",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "DescCliente": "[parameters('DescCliente')]",
+        "CodCliente": "[parameters('CodCliente')]"
+      },
+      "properties": {
+        "platformFaultDomainCount": "3",
+        "platformUpdateDomainCount": "20"
+      }
+    },
+    {
+      "apiVersion": "2016-03-30",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nicName')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "DescCliente": "[parameters('DescCliente')]",
+        "CodCliente": "[parameters('CodCliente')]"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2016-04-30-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('NomeVM')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+      ],
+      "tags": {
+        "DescCliente": "[parameters('DescCliente')]",
+        "CodCliente": "[parameters('CodCliente')]"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('DimensioneVM')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('NomeVM')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "[parameters('windowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[concat(parameters('NomeVM'),'-osdisk')]",
+            "vhd": {
+              "uri": "[concat('http://',parameters('StorageAccountName'),'.blob.core.windows.net/vhds/',concat(parameters('NomeVM'),'-osdisk.vhd'))]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "comments": "Join domain - JsonADDomainExtension",
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('VMsArray')[copyIndex()],'/joindomain')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines/', parameters('NomeVM'))]"
+      ],
+      "copy": {
+        "name": "vmDomainJoinCopy",
+        "count": "[length(variables('VMsArray'))]"
+      },
+      "properties": {
+        "publisher": "Microsoft.Compute",
+        "type": "JsonADDomainExtension",
+        "typeHandlerVersion": "1.3",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "Name": "[parameters('FQDNdominio')]",
+          "User": "[parameters('DomainUsername')]",
+          "Restart": "true",
+          "Options": "[variables('domainJoinOptions')]",
+          "OU": "[parameters('OU')]"
+        },
+        "protectedsettings": {
+          "Password": "[parameters('DomainPassword')]"
+        }
+      }
+    }
+  ]
+}
