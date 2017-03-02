@@ -25,6 +25,6 @@ Specificare l'OU in cui spostare il server al termine della Join al dominio, va 
 Se lasciato BLANK finisce nella OU default: Computers <b>E VA SPOSTATO MANUALMENTE</b><br>
 <br>
 <br>
-<a href="https://azuredeploy.net/?repository=https://github.com/user/repo" target="_blank">
+<a href="https://github.com/ragedrk/AzureARM/tree/master/DEVRDSFARM/RDSH" target="_blank">
     <img src="http://azuredeploy.net/deploybutton.png"/>
 </a>
